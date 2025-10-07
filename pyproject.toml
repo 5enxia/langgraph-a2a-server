@@ -1,6 +1,6 @@
 [project]
 name = "langgraph-a2a-server"
-version = "0.1.4"
+version = "0.1.5"
 description = "A2A Server implementation for LangGraph agents"
 readme = "README.md"
 requires-python = ">=3.10"

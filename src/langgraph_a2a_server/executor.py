@@ -20,6 +20,7 @@ from a2a.types import DataPart, FilePart, InternalError, Part, TaskState, TextPa
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
 from langgraph.graph.state import CompiledStateGraph
+from langchain_core.runnables.config import RunnableConfig
 
 logger = logging.getLogger(__name__)
 
@@ -107,9 +108,11 @@ class LangGraphA2AExecutor(AgentExecutor):
             # Prepare input for the graph
             graph_input = {self.input_key: messages}
 
+            config = RunnableConfig(configurable={'thread_id': updater.context_id})
+
             # Stream through the graph
             accumulated_text = ""
-            async for event in self.graph.astream(graph_input, stream_mode="values"):
+            async for event in self.graph.astream(graph_input, config=config, stream_mode="values"):
                 output = event.get(self.output_key, [])
                 if output and isinstance(output, list) and len(output) > 0:
                     last_message = output[-1]
