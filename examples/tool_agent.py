@@ -123,14 +123,12 @@ compiled_graph = graph.compile()
 
 # Create and start the A2A server
 if __name__ == "__main__":
-    from a2a.types import AgentSkill
+    from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
-    server = A2AServer(
-        graph=compiled_graph,
+    agent_card = AgentCard(
         name="Tool-Using Agent",
         description="An agent that can use tools for weather and calculations",
-        host="127.0.0.1",
-        port=9001,
+        url="http://127.0.0.1:9001",
         version="1.0.0",
         skills=[
             AgentSkill(
@@ -146,6 +144,16 @@ if __name__ == "__main__":
                 tags=["math", "calculator", "tools"],
             ),
         ],
+        capabilities=AgentCapabilities(streaming=True),
+        default_input_modes=["text"],
+        default_output_modes=["text"],
+    )
+
+    server = A2AServer(
+        graph=compiled_graph,
+        agent_card=agent_card,
+        host="127.0.0.1",
+        port=9001,
     )
 
     print("Starting multi-step tool agent...")

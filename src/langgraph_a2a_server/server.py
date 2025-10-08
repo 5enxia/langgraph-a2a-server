@@ -30,15 +30,12 @@ class A2AServer:
         self,
         graph: CompiledStateGraph,
         *,
-        name: str,
-        description: str,
+        agent_card: AgentCard,
         # Server configuration
         host: str = "127.0.0.1",
         port: int = 9000,
         http_url: str | None = None,
         serve_at_root: bool = False,
-        version: str = "0.0.1",
-        skills: list[AgentSkill] | None = None,
         # Graph configuration
         input_key: str = "messages",
         output_key: str = "messages",
@@ -52,8 +49,8 @@ class A2AServer:
 
         Args:
             graph: The compiled LangGraph instance to wrap with A2A compatibility.
-            name: The name of the agent.
-            description: A description of what the agent does.
+            agent_card: The AgentCard containing metadata about the agent (name, description,
+                version, skills, capabilities, etc.).
             host: The hostname or IP address to bind the A2A server to. Defaults to "127.0.0.1".
             port: The port to bind the A2A server to. Defaults to 9000.
             http_url: The public HTTP URL where this agent will be accessible. If provided,
@@ -63,8 +60,6 @@ class A2AServer:
             serve_at_root: If True, forces the server to serve at root path regardless of
                 http_url path component. Use this when your load balancer strips path prefixes.
                 Defaults to False.
-            version: The version of the agent. Defaults to "0.0.1".
-            skills: The list of capabilities or functions the agent can perform.
             input_key: The key in the graph state to send input messages to. Defaults to "messages".
             output_key: The key in the graph state to read output from. Defaults to "messages".
             task_store: Custom task store implementation for managing agent tasks. If None,
@@ -76,11 +71,16 @@ class A2AServer:
             push_sender: Custom push notification sender implementation. If None,
                 no push notifications are sent.
         """
+        # Store the agent card and extract key fields
+        self._agent_card = agent_card
+        self.name = agent_card.name
+        self.description = agent_card.description
+        self.version = agent_card.version or "0.0.1"
+        self._agent_skills = agent_card.skills
+        
+        # Server configuration
         self.host = host
         self.port = port
-        self.version = version
-        self.name = name
-        self.description = description
 
         if http_url:
             # Parse the provided URL to extract components for mounting
@@ -97,7 +97,7 @@ class A2AServer:
             self.mount_path = ""
 
         self.graph = graph
-        self.capabilities = AgentCapabilities(streaming=True)
+        self.capabilities = agent_card.capabilities or AgentCapabilities(streaming=True)
         self.request_handler = DefaultRequestHandler(
             agent_executor=LangGraphA2AExecutor(graph, input_key=input_key, output_key=output_key),
             task_store=task_store or InMemoryTaskStore(),
@@ -105,7 +105,6 @@ class A2AServer:
             push_config_store=push_config_store,
             push_sender=push_sender,
         )
-        self._agent_skills = skills
         logger.info("LangGraph integration with A2A is ready for use.")
 
     def _parse_public_url(self, url: str) -> tuple[str, str]:
@@ -146,16 +145,8 @@ class A2AServer:
         if not self.description:
             raise ValueError("A2A agent description cannot be None or empty")
 
-        return AgentCard(
-            name=self.name,
-            description=self.description,
-            url=self.http_url,
-            version=self.version,
-            skills=self.agent_skills,
-            default_input_modes=["text"],
-            default_output_modes=["text"],
-            capabilities=self.capabilities,
-        )
+        # Return a copy of the agent card with updated URL
+        return self._agent_card.model_copy(update={"url": self.http_url})
 
     @property
     def agent_skills(self) -> list[AgentSkill]:

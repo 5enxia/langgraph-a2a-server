@@ -2,6 +2,7 @@
 
 from typing import Annotated
 
+from a2a.types import AgentCapabilities, AgentCard
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
@@ -37,10 +38,20 @@ compiled_graph = graph.compile()
 
 # Create and start the A2A server
 if __name__ == "__main__":
-    server = A2AServer(
-        graph=compiled_graph,
+    agent_card = AgentCard(
         name="Simple Echo Agent",
         description="A simple agent that echoes your messages",
+        url="http://127.0.0.1:9000",
+        version="0.0.1",
+        skills=[],
+        capabilities=AgentCapabilities(streaming=True),
+        default_input_modes=["text"],
+        default_output_modes=["text"],
+    )
+    
+    server = A2AServer(
+        graph=compiled_graph,
+        agent_card=agent_card,
         host="127.0.0.1",
         port=9000,
     )

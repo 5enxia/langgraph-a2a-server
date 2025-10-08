@@ -47,20 +47,28 @@ compiled_graph = graph.compile()
 
 # Create and start the A2A server
 if __name__ == "__main__":
-    from a2a.types import AgentSkill
+    from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
-    server = A2AServer(
-        graph=compiled_graph,
+    agent_card = AgentCard(
         name="Coding Assistant",
         description="A coding assistant",
-        host="127.0.0.1",
-        port=9000,
+        url="http://127.0.0.1:9000",
         version="1.0.0",
         skills=[
             AgentSkill(
                 name="write_code", id="write_code", description="Generate code snippets", tags=["code", "generation"]
             )
         ],
+        capabilities=AgentCapabilities(streaming=True),
+        default_input_modes=["text"],
+        default_output_modes=["text"],
+    )
+
+    server = A2AServer(
+        graph=compiled_graph,
+        agent_card=agent_card,
+        host="127.0.0.1",
+        port=9000,
     )
 
     print("Starting A2A server with LangChain integration...")
