@@ -1,9 +1,9 @@
 """Tests for LangGraph A2A Executor."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from a2a.types import DataPart, FilePart, InternalError, Part, TaskState, TextPart, UnsupportedOperationError
+from a2a.types import DataPart, FilePart, InternalError, TextPart, UnsupportedOperationError
 from a2a.utils.errors import ServerError
 
 from langgraph_a2a_server.executor import LangGraphA2AExecutor

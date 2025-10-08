@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock
 
-import pytest
 from a2a.server.context import UnauthenticatedUser
 from starlette.requests import Request
 
@@ -32,6 +31,7 @@ class TestBearerTokenAuthContextBuilder:
 
     def test_valid_bearer_token(self):
         """Test that valid bearer token creates authenticated user."""
+
         def validate_token(token: str) -> str | None:
             if token == "valid-token":
                 return "user@example.com"
@@ -50,6 +50,7 @@ class TestBearerTokenAuthContextBuilder:
 
     def test_invalid_bearer_token(self):
         """Test that invalid bearer token creates unauthenticated context."""
+
         def validate_token(token: str) -> str | None:
             if token == "valid-token":
                 return "user@example.com"
@@ -68,6 +69,7 @@ class TestBearerTokenAuthContextBuilder:
 
     def test_no_authorization_header(self):
         """Test that missing authorization header creates unauthenticated context."""
+
         def validate_token(token: str) -> str | None:
             return "user@example.com"
 
@@ -84,6 +86,7 @@ class TestBearerTokenAuthContextBuilder:
 
     def test_non_bearer_authorization(self):
         """Test that non-Bearer authorization creates unauthenticated context."""
+
         def validate_token(token: str) -> str | None:
             return "user@example.com"
 
@@ -104,21 +107,17 @@ class TestHeaderAuthContextBuilder:
 
     def test_valid_api_key_header(self):
         """Test that valid API key header creates authenticated user."""
+
         def validate_credentials(headers: dict[str, str]) -> str | None:
             if headers.get("X-API-Key") == "secret-key":
                 return "api-user@example.com"
             return None
 
-        builder = HeaderAuthContextBuilder(
-            validate_credentials,
-            header_names=["X-API-Key"]
-        )
+        builder = HeaderAuthContextBuilder(validate_credentials, header_names=["X-API-Key"])
 
         # Create mock request with valid API key
         mock_request = MagicMock(spec=Request)
-        mock_request.headers.get.side_effect = lambda key, default="": (
-            "secret-key" if key == "X-API-Key" else default
-        )
+        mock_request.headers.get.side_effect = lambda key, default="": ("secret-key" if key == "X-API-Key" else default)
 
         context = builder.build(mock_request)
 
@@ -127,21 +126,17 @@ class TestHeaderAuthContextBuilder:
 
     def test_invalid_api_key_header(self):
         """Test that invalid API key header creates unauthenticated context."""
+
         def validate_credentials(headers: dict[str, str]) -> str | None:
             if headers.get("X-API-Key") == "secret-key":
                 return "api-user@example.com"
             return None
 
-        builder = HeaderAuthContextBuilder(
-            validate_credentials,
-            header_names=["X-API-Key"]
-        )
+        builder = HeaderAuthContextBuilder(validate_credentials, header_names=["X-API-Key"])
 
         # Create mock request with invalid API key
         mock_request = MagicMock(spec=Request)
-        mock_request.headers.get.side_effect = lambda key, default="": (
-            "wrong-key" if key == "X-API-Key" else default
-        )
+        mock_request.headers.get.side_effect = lambda key, default="": ("wrong-key" if key == "X-API-Key" else default)
 
         context = builder.build(mock_request)
 
@@ -150,25 +145,24 @@ class TestHeaderAuthContextBuilder:
 
     def test_multiple_headers(self):
         """Test authentication with multiple headers."""
+
         def validate_credentials(headers: dict[str, str]) -> str | None:
-            if (headers.get("X-API-Key") == "secret-key" and
-                    headers.get("X-User-ID") == "user123"):
+            if headers.get("X-API-Key") == "secret-key" and headers.get("X-User-ID") == "user123":
                 return "user123@example.com"
             return None
 
-        builder = HeaderAuthContextBuilder(
-            validate_credentials,
-            header_names=["X-API-Key", "X-User-ID"]
-        )
+        builder = HeaderAuthContextBuilder(validate_credentials, header_names=["X-API-Key", "X-User-ID"])
 
         # Create mock request with valid headers
         mock_request = MagicMock(spec=Request)
+
         def get_header(key, default=""):
             if key == "X-API-Key":
                 return "secret-key"
             elif key == "X-User-ID":
                 return "user123"
             return default
+
         mock_request.headers.get.side_effect = get_header
 
         context = builder.build(mock_request)
@@ -178,16 +172,14 @@ class TestHeaderAuthContextBuilder:
 
     def test_all_headers_when_none_specified(self):
         """Test that all headers are passed when header_names is None."""
+
         def validate_credentials(headers: dict[str, str]) -> str | None:
             # Check if specific header exists in all headers
             if "X-Custom-Auth" in headers:
                 return "custom-user@example.com"
             return None
 
-        builder = HeaderAuthContextBuilder(
-            validate_credentials,
-            header_names=None
-        )
+        builder = HeaderAuthContextBuilder(validate_credentials, header_names=None)
 
         # Create mock request
         mock_request = MagicMock(spec=Request)

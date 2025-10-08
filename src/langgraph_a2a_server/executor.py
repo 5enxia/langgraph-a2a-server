@@ -19,8 +19,8 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import DataPart, FilePart, InternalError, Part, TaskState, TextPart, UnsupportedOperationError
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
-from langgraph.graph.state import CompiledStateGraph
 from langchain_core.runnables.config import RunnableConfig
+from langgraph.graph.state import CompiledStateGraph
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class LangGraphA2AExecutor(AgentExecutor):
             # Prepare input for the graph
             graph_input = {self.input_key: messages}
 
-            config = RunnableConfig(configurable={'thread_id': updater.context_id})
+            config = RunnableConfig(configurable={"thread_id": updater.context_id})
 
             # Stream through the graph
             accumulated_text = ""

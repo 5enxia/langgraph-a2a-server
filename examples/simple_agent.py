@@ -48,7 +48,7 @@ if __name__ == "__main__":
         default_input_modes=["text"],
         default_output_modes=["text"],
     )
-    
+
     server = A2AServer(
         graph=compiled_graph,
         agent_card=agent_card,

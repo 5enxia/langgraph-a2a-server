@@ -40,6 +40,104 @@ server.serve()
 ## Features
 
 - Easy integration with existing LangGraph applications
+- HTTP header-based authentication support (Bearer tokens, API keys, custom headers)
+- Flexible authentication with custom validation functions
+- Support for extended agent cards and dynamic card modification
+
+## Authentication
+
+The A2A server supports authentication via HTTP headers. You can use built-in authentication helpers or create custom authentication logic.
+
+### Bearer Token Authentication
+
+Use Bearer token authentication with the `Authorization` header:
+
+```python
+from langgraph_a2a_server import A2AServer, BearerTokenAuthContextBuilder
+
+def validate_token(token: str) -> str | None:
+    """Return username if token is valid, None otherwise."""
+    if token == "secret-token-123":
+        return "user@example.com"
+    return None
+
+context_builder = BearerTokenAuthContextBuilder(validate_token)
+
+server = A2AServer(
+    graph=your_graph,
+    agent_card=agent_card,
+    context_builder=context_builder,
+)
+```
+
+Clients can then authenticate with:
+```bash
+curl -H "Authorization: Bearer secret-token-123" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"execute","params":{"input":"Hello"},"id":1}' \
+  http://localhost:9000/jsonrpc
+```
+
+### Custom Header Authentication
+
+Use custom headers for authentication (e.g., API keys):
+
+```python
+from langgraph_a2a_server import A2AServer, HeaderAuthContextBuilder
+
+def validate_api_key(headers: dict[str, str]) -> str | None:
+    """Return username if API key is valid, None otherwise."""
+    api_key = headers.get("X-API-Key", "")
+    if api_key == "sk-my-secret-key":
+        return "api-user@example.com"
+    return None
+
+context_builder = HeaderAuthContextBuilder(
+    validate_api_key,
+    header_names=["X-API-Key"]
+)
+
+server = A2AServer(
+    graph=your_graph,
+    agent_card=agent_card,
+    context_builder=context_builder,
+)
+```
+
+Clients can then authenticate with:
+```bash
+curl -H "X-API-Key: sk-my-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"execute","params":{"input":"Hello"},"id":1}' \
+  http://localhost:9000/jsonrpc
+```
+
+### Custom Authentication
+
+For advanced use cases, implement your own `CallContextBuilder`:
+
+```python
+from a2a.server.apps.jsonrpc.jsonrpc_app import CallContextBuilder
+from a2a.server.context import ServerCallContext
+from starlette.requests import Request
+from langgraph_a2a_server.auth import AuthenticatedUser
+
+class CustomAuthContextBuilder(CallContextBuilder):
+    def build(self, request: Request) -> ServerCallContext:
+        context = ServerCallContext()
+        # Your custom authentication logic here
+        # Extract credentials from request, validate them, etc.
+        user_id = extract_and_validate_credentials(request)
+        if user_id:
+            context.user = AuthenticatedUser(user_id)
+        return context
+
+server = A2AServer(
+    graph=your_graph,
+    agent_card=agent_card,
+    context_builder=CustomAuthContextBuilder(),
+)
+```
 
 ## Examples
 
@@ -59,6 +157,18 @@ uv run --extra examples examples/langchain_agent.py
 
 ```sh
 uv run --extra examples examples/tools_agent.py
+```
+
+### authenticated_agent.py (Bearer token authentication)
+
+```sh
+uv run --extra examples examples/authenticated_agent.py
+```
+
+### api_key_agent.py (API key authentication)
+
+```sh
+uv run --extra examples examples/api_key_agent.py
 ```
 
 ## License

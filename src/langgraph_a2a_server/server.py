@@ -5,7 +5,8 @@ allowing it to be used in A2A-compatible systems.
 """
 
 import logging
-from typing import Any, Callable, Literal
+from collections.abc import Callable
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import uvicorn
@@ -92,7 +93,7 @@ class A2AServer:
         self.description = agent_card.description
         self.version = agent_card.version or "0.0.1"
         self._agent_skills = agent_card.skills
-        
+
         # Server configuration
         self.host = host
         self.port = port

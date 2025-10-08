@@ -3,8 +3,7 @@
 This module provides helper classes for implementing authentication in A2A servers.
 """
 
-from abc import ABC, abstractmethod
-from typing import Callable
+from collections.abc import Callable
 
 from a2a.server.apps.jsonrpc.jsonrpc_app import CallContextBuilder
 from a2a.server.context import ServerCallContext, User
