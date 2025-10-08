@@ -10,12 +10,32 @@ from starlette.applications import Starlette
 from langgraph_a2a_server.server import A2AServer
 
 
+def create_agent_card(
+    name: str = "Test Agent",
+    description: str = "A test agent",
+    version: str = "0.0.1",
+    skills: list[AgentSkill] | None = None,
+    **kwargs
+) -> AgentCard:
+    """Helper to create AgentCard with required fields."""
+    return AgentCard(
+        name=name,
+        description=description,
+        url=kwargs.get("url", "http://placeholder.com"),
+        version=version,
+        skills=skills if skills is not None else [],
+        capabilities=kwargs.get("capabilities", AgentCapabilities(streaming=True)),
+        default_input_modes=kwargs.get("default_input_modes", ["text"]),
+        default_output_modes=kwargs.get("default_output_modes", ["text"]),
+    )
+
+
 def test_server_initialization(mock_langgraph):
     """Test that A2AServer initializes correctly with default values."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
     )
 
     assert server.name == "Test Agent"
@@ -30,13 +50,16 @@ def test_server_initialization(mock_langgraph):
 
 def test_server_initialization_with_custom_values(mock_langgraph):
     """Test that A2AServer initializes correctly with custom values."""
-    server = A2AServer(
-        graph=mock_langgraph,
+    agent_card = create_agent_card(
         name="Custom Agent",
         description="A custom test agent",
+        version="1.0.0",
+    )
+    server = A2AServer(
+        graph=mock_langgraph,
+        agent_card=agent_card,
         host="0.0.0.0",
         port=8080,
-        version="1.0.0",
     )
 
     assert server.host == "0.0.0.0"
@@ -48,10 +71,10 @@ def test_server_initialization_with_custom_values(mock_langgraph):
 
 def test_server_with_http_url(mock_langgraph):
     """Test server with custom HTTP URL."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
         http_url="http://example.com/agent",
     )
 
@@ -62,10 +85,10 @@ def test_server_with_http_url(mock_langgraph):
 
 def test_server_with_http_url_no_path(mock_langgraph):
     """Test server with HTTP URL containing no path."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
         http_url="http://my-alb.amazonaws.com",
     )
 
@@ -76,10 +99,10 @@ def test_server_with_http_url_no_path(mock_langgraph):
 
 def test_server_with_serve_at_root(mock_langgraph):
     """Test server with serve_at_root flag."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
         http_url="http://example.com/agent",
         serve_at_root=True,
     )
@@ -94,12 +117,10 @@ def test_server_with_skills(mock_langgraph):
         AgentSkill(name="skill1", id="skill1", description="First skill", tags=[]),
         AgentSkill(name="skill2", id="skill2", description="Second skill", tags=[]),
     ]
-
+    agent_card = create_agent_card(skills=skills)
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=skills,
+        agent_card=agent_card,
     )
 
     assert len(server.agent_skills) == 2
@@ -109,11 +130,10 @@ def test_server_with_skills(mock_langgraph):
 
 def test_server_with_empty_skills_list(mock_langgraph):
     """Test that passing an empty skills list works correctly."""
+    agent_card = create_agent_card(skills=[])
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     # Should have empty skills list
@@ -124,11 +144,10 @@ def test_server_with_empty_skills_list(mock_langgraph):
 
 def test_server_with_none_skills(mock_langgraph):
     """Test server with None skills defaults to empty list."""
+    agent_card = create_agent_card(skills=[])
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=None,
+        agent_card=agent_card,
     )
 
     assert isinstance(server.agent_skills, list)
@@ -137,10 +156,10 @@ def test_server_with_none_skills(mock_langgraph):
 
 def test_parse_public_url(mock_langgraph):
     """Test URL parsing."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
     )
 
     base_url, mount_path = server._parse_public_url("http://example.com/agent")
@@ -158,11 +177,10 @@ def test_parse_public_url(mock_langgraph):
 
 def test_public_agent_card(mock_langgraph):
     """Test agent card generation."""
+    agent_card = create_agent_card(version="1.0.0")
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        version="1.0.0",
+        agent_card=agent_card,
     )
 
     card = server.public_agent_card
@@ -181,12 +199,10 @@ def test_public_agent_card_with_custom_skills(mock_langgraph):
     custom_skills = [
         AgentSkill(name="custom_skill", id="custom_skill", description="A custom skill", tags=["test"]),
     ]
-
+    agent_card = create_agent_card(skills=custom_skills)
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=custom_skills,
+        agent_card=agent_card,
     )
     card = server.public_agent_card
 
@@ -197,10 +213,10 @@ def test_public_agent_card_with_custom_skills(mock_langgraph):
 
 def test_server_name_validation(mock_langgraph):
     """Test that server validates name."""
+    agent_card = create_agent_card(name="", description="A test agent")
     server = A2AServer(
         graph=mock_langgraph,
-        name="",
-        description="A test agent",
+        agent_card=agent_card,
     )
 
     with pytest.raises(ValueError, match="name cannot be None or empty"):
@@ -209,10 +225,10 @@ def test_server_name_validation(mock_langgraph):
 
 def test_server_description_validation(mock_langgraph):
     """Test that server validates description."""
+    agent_card = create_agent_card(name="Test Agent", description="")
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="",
+        agent_card=agent_card,
     )
 
     with pytest.raises(ValueError, match="description cannot be None or empty"):
@@ -221,10 +237,10 @@ def test_server_description_validation(mock_langgraph):
 
 def test_agent_skills_setter(mock_langgraph):
     """Test that agent_skills setter works correctly."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
     )
 
     # Set new skills using setter
@@ -244,11 +260,10 @@ def test_agent_skills_setter(mock_langgraph):
 
 def test_to_starlette_app(mock_langgraph):
     """Test that to_starlette_app returns a Starlette application."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     app = server.to_starlette_app()
@@ -258,12 +273,11 @@ def test_to_starlette_app(mock_langgraph):
 
 def test_to_starlette_app_with_mounting(mock_langgraph):
     """Test that to_starlette_app creates mounted app when mount_path exists."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
         http_url="http://example.com/agent1",
-        skills=[],
     )
 
     app = server.to_starlette_app()
@@ -273,11 +287,10 @@ def test_to_starlette_app_with_mounting(mock_langgraph):
 
 def test_to_fastapi_app(mock_langgraph):
     """Test that to_fastapi_app returns a FastAPI application."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     app = server.to_fastapi_app()
@@ -287,12 +300,11 @@ def test_to_fastapi_app(mock_langgraph):
 
 def test_to_fastapi_app_with_mounting(mock_langgraph):
     """Test that to_fastapi_app creates mounted app when mount_path exists."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
         http_url="http://example.com/agent1",
-        skills=[],
     )
 
     app = server.to_fastapi_app()
@@ -303,11 +315,10 @@ def test_to_fastapi_app_with_mounting(mock_langgraph):
 @patch("uvicorn.run")
 def test_serve_with_starlette(mock_run, mock_langgraph):
     """Test that serve starts a Starlette server by default."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     server.serve()
@@ -322,11 +333,10 @@ def test_serve_with_starlette(mock_run, mock_langgraph):
 @patch("uvicorn.run")
 def test_serve_with_fastapi(mock_run, mock_langgraph):
     """Test that serve starts a FastAPI server when specified."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     server.serve(app_type="fastapi")
@@ -341,10 +351,10 @@ def test_serve_with_fastapi(mock_run, mock_langgraph):
 @patch("uvicorn.run")
 def test_serve_with_custom_host_port(mock_run, mock_langgraph):
     """Test that serve can override host and port."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
         host="0.0.0.0",
         port=8080,
     )
@@ -360,11 +370,10 @@ def test_serve_with_custom_host_port(mock_run, mock_langgraph):
 @patch("uvicorn.run")
 def test_serve_with_custom_kwargs(mock_run, mock_langgraph):
     """Test that serve passes additional kwargs to uvicorn.run."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     server.serve(log_level="debug", reload=True)
@@ -380,11 +389,10 @@ def test_serve_handles_keyboard_interrupt(mock_run, mock_langgraph, caplog):
     """Test that serve handles KeyboardInterrupt gracefully."""
     import logging
     
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     with caplog.at_level(logging.INFO):
@@ -399,11 +407,10 @@ def test_serve_handles_general_exception(mock_run, mock_langgraph, caplog):
     """Test that serve handles general exceptions gracefully."""
     import logging
     
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
-        skills=[],
+        agent_card=agent_card,
     )
 
     with caplog.at_level(logging.INFO):
@@ -417,10 +424,10 @@ def test_executor_created_correctly(mock_langgraph):
     """Test that the executor is created correctly."""
     from langgraph_a2a_server.executor import LangGraphA2AExecutor
 
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
     )
 
     assert isinstance(server.request_handler.agent_executor, LangGraphA2AExecutor)
@@ -429,13 +436,12 @@ def test_executor_created_correctly(mock_langgraph):
 
 def test_backwards_compatibility_without_http_url(mock_langgraph):
     """Test that the old behavior is preserved when http_url is not provided."""
+    agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
-        name="Test Agent",
-        description="A test agent",
+        agent_card=agent_card,
         host="localhost",
         port=9000,
-        skills=[],
     )
 
     # Should behave exactly like before
