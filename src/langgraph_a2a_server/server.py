@@ -5,11 +5,13 @@ allowing it to be used in A2A-compatible systems.
 """
 
 import logging
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 from urllib.parse import urlparse
 
 import uvicorn
 from a2a.server.apps import A2AFastAPIApplication, A2AStarletteApplication
+from a2a.server.apps.jsonrpc.jsonrpc_app import CallContextBuilder
+from a2a.server.context import ServerCallContext
 from a2a.server.events import QueueManager
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore, PushNotificationConfigStore, PushNotificationSender, TaskStore
@@ -44,6 +46,11 @@ class A2AServer:
         queue_manager: QueueManager | None = None,
         push_config_store: PushNotificationConfigStore | None = None,
         push_sender: PushNotificationSender | None = None,
+        # Authentication and extended features
+        context_builder: CallContextBuilder | None = None,
+        extended_agent_card: AgentCard | None = None,
+        card_modifier: Callable[[AgentCard], AgentCard] | None = None,
+        extended_card_modifier: Callable[[AgentCard, ServerCallContext], AgentCard] | None = None,
     ):
         """Initialize an A2A-compatible server from a LangGraph agent.
 
@@ -70,6 +77,14 @@ class A2AServer:
                 no push notification configuration is used.
             push_sender: Custom push notification sender implementation. If None,
                 no push notifications are sent.
+            context_builder: A CallContextBuilder for extracting authentication and context
+                information from HTTP requests. If None, no authentication is performed.
+            extended_agent_card: An optional, distinct AgentCard to be served at the
+                authenticated extended card endpoint. If None, uses the main agent_card.
+            card_modifier: An optional callback to dynamically modify the public agent card
+                before it is served.
+            extended_card_modifier: An optional callback to dynamically modify the extended
+                agent card before it is served. It receives the call context.
         """
         # Store the agent card and extract key fields
         self._agent_card = agent_card
@@ -98,6 +113,10 @@ class A2AServer:
 
         self.graph = graph
         self.capabilities = agent_card.capabilities or AgentCapabilities(streaming=True)
+        self.context_builder = context_builder
+        self.extended_agent_card = extended_agent_card
+        self.card_modifier = card_modifier
+        self.extended_card_modifier = extended_card_modifier
         self.request_handler = DefaultRequestHandler(
             agent_executor=LangGraphA2AExecutor(graph, input_key=input_key, output_key=output_key),
             task_store=task_store or InMemoryTaskStore(),
@@ -171,7 +190,14 @@ class A2AServer:
         Returns:
             Starlette: A Starlette application configured to serve this agent.
         """
-        a2a_app = A2AStarletteApplication(agent_card=self.public_agent_card, http_handler=self.request_handler).build()
+        a2a_app = A2AStarletteApplication(
+            agent_card=self.public_agent_card,
+            http_handler=self.request_handler,
+            extended_agent_card=self.extended_agent_card,
+            context_builder=self.context_builder,
+            card_modifier=self.card_modifier,
+            extended_card_modifier=self.extended_card_modifier,
+        ).build()
 
         if self.mount_path:
             # Create parent app and mount the A2A app at the specified path
@@ -191,7 +217,14 @@ class A2AServer:
         Returns:
             FastAPI: A FastAPI application configured to serve this agent.
         """
-        a2a_app = A2AFastAPIApplication(agent_card=self.public_agent_card, http_handler=self.request_handler).build()
+        a2a_app = A2AFastAPIApplication(
+            agent_card=self.public_agent_card,
+            http_handler=self.request_handler,
+            extended_agent_card=self.extended_agent_card,
+            context_builder=self.context_builder,
+            card_modifier=self.card_modifier,
+            extended_card_modifier=self.extended_card_modifier,
+        ).build()
 
         if self.mount_path:
             # Create parent app and mount the A2A app at the specified path

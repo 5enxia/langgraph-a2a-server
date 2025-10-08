@@ -454,3 +454,99 @@ def test_backwards_compatibility_without_http_url(mock_langgraph):
     # Agent card should use the traditional URL
     card = server.public_agent_card
     assert card.url == "http://localhost:9000/"
+
+
+def test_server_with_context_builder(mock_langgraph):
+    """Test that A2AServer accepts context_builder parameter."""
+    from unittest.mock import MagicMock
+    from langgraph_a2a_server.auth import BearerTokenAuthContextBuilder
+
+    def validate_token(token: str) -> str | None:
+        return "user@example.com" if token == "valid" else None
+
+    context_builder = BearerTokenAuthContextBuilder(validate_token)
+    agent_card = create_agent_card()
+    
+    server = A2AServer(
+        graph=mock_langgraph,
+        agent_card=agent_card,
+        context_builder=context_builder,
+    )
+
+    assert server.context_builder is context_builder
+
+
+def test_server_with_extended_agent_card(mock_langgraph):
+    """Test that A2AServer accepts extended_agent_card parameter."""
+    agent_card = create_agent_card(name="Public Agent")
+    extended_card = create_agent_card(name="Extended Agent")
+    
+    server = A2AServer(
+        graph=mock_langgraph,
+        agent_card=agent_card,
+        extended_agent_card=extended_card,
+    )
+
+    assert server.extended_agent_card is extended_card
+    assert server.extended_agent_card.name == "Extended Agent"
+
+
+def test_server_with_card_modifiers(mock_langgraph):
+    """Test that A2AServer accepts card modifier parameters."""
+    def card_modifier(card):
+        return card
+    
+    def extended_card_modifier(card, context):
+        return card
+    
+    agent_card = create_agent_card()
+    
+    server = A2AServer(
+        graph=mock_langgraph,
+        agent_card=agent_card,
+        card_modifier=card_modifier,
+        extended_card_modifier=extended_card_modifier,
+    )
+
+    assert server.card_modifier is card_modifier
+    assert server.extended_card_modifier is extended_card_modifier
+
+
+def test_to_fastapi_app_with_context_builder(mock_langgraph):
+    """Test that to_fastapi_app passes context_builder to A2AFastAPIApplication."""
+    from langgraph_a2a_server.auth import BearerTokenAuthContextBuilder
+
+    def validate_token(token: str) -> str | None:
+        return "user@example.com" if token == "valid" else None
+
+    context_builder = BearerTokenAuthContextBuilder(validate_token)
+    agent_card = create_agent_card()
+    
+    server = A2AServer(
+        graph=mock_langgraph,
+        agent_card=agent_card,
+        context_builder=context_builder,
+    )
+
+    app = server.to_fastapi_app()
+    assert isinstance(app, FastAPI)
+
+
+def test_to_starlette_app_with_context_builder(mock_langgraph):
+    """Test that to_starlette_app passes context_builder to A2AStarletteApplication."""
+    from langgraph_a2a_server.auth import BearerTokenAuthContextBuilder
+
+    def validate_token(token: str) -> str | None:
+        return "user@example.com" if token == "valid" else None
+
+    context_builder = BearerTokenAuthContextBuilder(validate_token)
+    agent_card = create_agent_card()
+    
+    server = A2AServer(
+        graph=mock_langgraph,
+        agent_card=agent_card,
+        context_builder=context_builder,
+    )
+
+    app = server.to_starlette_app()
+    assert isinstance(app, Starlette)
