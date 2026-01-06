@@ -9,7 +9,7 @@ dependencies = [
     "fastapi>=0.100.0",
     "uvicorn>=0.23.0",
     "starlette>=0.27.0",
-    "a2a-sdk[http-server]>=0.3.7",
+    "a2a-sdk[http-server]>=0.3.22",
 ]
 
 [project.optional-dependencies]

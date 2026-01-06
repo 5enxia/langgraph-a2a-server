@@ -120,8 +120,7 @@ class LangGraphA2AExecutor(AgentExecutor):
                         content = last_message.content
                         if isinstance(content, str) and content != accumulated_text:
                             accumulated_text = content
-                            await updater.update_status(
-                                TaskState.working,
+                            await updater.start_work(
                                 new_agent_text_message(
                                     content,
                                     updater.context_id,
