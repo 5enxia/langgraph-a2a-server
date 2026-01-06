@@ -214,25 +214,21 @@ def test_public_agent_card_with_custom_skills(mock_langgraph):
 def test_server_name_validation(mock_langgraph):
     """Test that server validates name."""
     agent_card = create_agent_card(name="", description="A test agent")
-    server = A2AServer(
-        graph=mock_langgraph,
-        agent_card=agent_card,
-    )
-
-    with pytest.raises(ValueError, match="name cannot be None or empty"):
-        _ = server.public_agent_card
+    with pytest.raises(ValueError, match="A2A agent name cannot be None or empty"):
+        A2AServer(
+            graph=mock_langgraph,
+            agent_card=agent_card,
+        )
 
 
 def test_server_description_validation(mock_langgraph):
     """Test that server validates description."""
     agent_card = create_agent_card(name="Test Agent", description="")
-    server = A2AServer(
-        graph=mock_langgraph,
-        agent_card=agent_card,
-    )
-
-    with pytest.raises(ValueError, match="description cannot be None or empty"):
-        _ = server.public_agent_card
+    with pytest.raises(ValueError, match="A2A agent description cannot be None or empty"):
+        A2AServer(
+            graph=mock_langgraph,
+            agent_card=agent_card,
+        )
 
 
 def test_agent_skills_setter(mock_langgraph):

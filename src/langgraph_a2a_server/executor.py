@@ -123,19 +123,33 @@ class LangGraphA2AExecutor(AgentExecutor):
             accumulated_text = ""
             async for event in self.graph.astream(graph_input, config=config, stream_mode="values"):
                 output = event.get(self.output_key, [])
-                if output and isinstance(output, list) and len(output) > 0:
-                    last_message = output[-1]
-                    if hasattr(last_message, "content"):
-                        content = last_message.content
-                        if isinstance(content, str) and content != accumulated_text:
-                            accumulated_text = content
-                            await updater.start_work(
-                                new_agent_text_message(
-                                    content,
-                                    updater.context_id,
-                                    updater.task_id,
-                                ),
-                            )
+                if not (output and isinstance(output, list)):
+                    continue
+
+                last_message = output[-1]
+                content = getattr(last_message, "content", "")
+
+                # Handle LangChain message content types (str or list of parts)
+                if isinstance(content, list):
+                    text_parts = []
+                    for part in content:
+                        if isinstance(part, str):
+                            text_parts.append(part)
+                        elif isinstance(part, dict) and part.get("type") == "text":
+                            text_parts.append(part.get("text", ""))
+                    content = "".join(text_parts)
+                elif not isinstance(content, str):
+                    content = str(content)
+
+                if content and content != accumulated_text:
+                    accumulated_text = content
+                    await updater.start_work(
+                        new_agent_text_message(
+                            content,
+                            updater.context_id,
+                            updater.task_id,
+                        ),
+                    )
 
             # Send final result
             if accumulated_text:
@@ -162,32 +176,35 @@ class LangGraphA2AExecutor(AgentExecutor):
 
         for part in parts:
             try:
-                match part.root:
-                    case TextPart(text=text):
-                        messages.append({"role": "user", "content": text})
+                root = part.root
 
-                    case FilePart(file=file_obj):
-                        mime_type = getattr(file_obj, "mime_type", "unknown/unknown")
-                        file_name = getattr(file_obj, "name", "FileNameNotProvided")
+                if isinstance(root, TextPart):
+                    messages.append({"role": "user", "content": root.text})
 
-                        match file_obj:
-                            case FileWithBytes(bytes=bytes_data):
-                                file_info = (
-                                    f"[File: {file_name} ({mime_type})] - Binary data of {len(bytes_data)} bytes"
-                                )
-                            case FileWithUri(uri=uri):
-                                file_info = f"[File: {file_name} ({mime_type})] - Referenced file at: {uri}"
-                            case _:
-                                file_info = f"[File: {file_name} ({mime_type})]"
+                elif isinstance(root, FilePart):
+                    file_obj = root.file
+                    mime_type = getattr(file_obj, "mime_type", "unknown/unknown")
+                    file_name = getattr(file_obj, "name", "FileNameNotProvided")
+                    uri = getattr(file_obj, "uri", None)
+                    bytes_data = getattr(file_obj, "bytes", None)
 
-                        messages.append({"role": "user", "content": file_info})
+                    if bytes_data:
+                        file_info = (
+                            f"[File: {file_name} ({mime_type})] - Binary data of {len(bytes_data)} bytes"
+                        )
+                    elif uri:
+                        file_info = f"[File: {file_name} ({mime_type})] - Referenced file at: {uri}"
+                    else:
+                        file_info = f"[File: {file_name} ({mime_type})]"
 
-                    case DataPart(data=data):
-                        try:
-                            data_text = json.dumps(data, indent=2)
-                            messages.append({"role": "user", "content": f"[Structured Data]\n{data_text}"})
-                        except (TypeError, ValueError):
-                            logger.exception("Failed to serialize data part")
+                    messages.append({"role": "user", "content": file_info})
+
+                elif isinstance(root, DataPart):
+                    try:
+                        data_text = json.dumps(root.data, indent=2)
+                        messages.append({"role": "user", "content": f"[Structured Data]\n{data_text}"})
+                    except (TypeError, ValueError):
+                        logger.exception("Failed to serialize data part")
 
             except Exception:
                 logger.exception("Error processing part")
