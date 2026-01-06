@@ -16,11 +16,20 @@ from typing import Any, Literal
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
-from a2a.types import DataPart, FilePart, InternalError, Part, TaskState, TextPart, UnsupportedOperationError
+from a2a.types import (
+    DataPart,
+    FilePart,
+    FileWithBytes,
+    FileWithUri,
+    InternalError,
+    Part,
+    TextPart,
+    UnsupportedOperationError,
+)
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
-from langgraph.graph.state import CompiledStateGraph
 from langchain_core.runnables.config import RunnableConfig
+from langgraph.graph.state import CompiledStateGraph
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +106,7 @@ class LangGraphA2AExecutor(AgentExecutor):
             updater: The task updater for managing task state and sending updates.
         """
         # Convert A2A message parts to LangGraph input format
-        if context.message and hasattr(context.message, "parts"):
+        if context.message and context.message.parts:
             messages = self._convert_a2a_parts_to_messages(context.message.parts)
             if not messages:
                 raise ValueError("No messages available")
@@ -153,39 +162,32 @@ class LangGraphA2AExecutor(AgentExecutor):
 
         for part in parts:
             try:
-                part_root = part.root
+                match part.root:
+                    case TextPart(text=text):
+                        messages.append({"role": "user", "content": text})
 
-                if isinstance(part_root, TextPart):
-                    # Handle TextPart
-                    messages.append({"role": "user", "content": part_root.text})
+                    case FilePart(file=file_obj):
+                        mime_type = getattr(file_obj, "mime_type", "unknown/unknown")
+                        file_name = getattr(file_obj, "name", "FileNameNotProvided")
 
-                elif isinstance(part_root, FilePart):
-                    # Handle FilePart - convert to text representation
-                    file_obj = part_root.file
-                    mime_type = getattr(file_obj, "mime_type", None)
-                    file_name = getattr(file_obj, "name", "FileNameNotProvided")
+                        match file_obj:
+                            case FileWithBytes(bytes=bytes_data):
+                                file_info = (
+                                    f"[File: {file_name} ({mime_type})] - Binary data of {len(bytes_data)} bytes"
+                                )
+                            case FileWithUri(uri=uri):
+                                file_info = f"[File: {file_name} ({mime_type})] - Referenced file at: {uri}"
+                            case _:
+                                file_info = f"[File: {file_name} ({mime_type})]"
 
-                    # For now, represent files as text
-                    # In the future, this could be extended to handle images, etc.
-                    uri_data = getattr(file_obj, "uri", None)
-                    bytes_data = getattr(file_obj, "bytes", None)
+                        messages.append({"role": "user", "content": file_info})
 
-                    if bytes_data:
-                        file_info = f"[File: {file_name} ({mime_type})] - Binary data of {len(bytes_data)} bytes"
-                    elif uri_data:
-                        file_info = f"[File: {file_name} ({mime_type})] - Referenced file at: {uri_data}"
-                    else:
-                        file_info = f"[File: {file_name} ({mime_type})]"
-
-                    messages.append({"role": "user", "content": file_info})
-
-                elif isinstance(part_root, DataPart):
-                    # Handle DataPart - convert structured data to JSON text
-                    try:
-                        data_text = json.dumps(part_root.data, indent=2)
-                        messages.append({"role": "user", "content": f"[Structured Data]\n{data_text}"})
-                    except Exception:
-                        logger.exception("Failed to serialize data part")
+                    case DataPart(data=data):
+                        try:
+                            data_text = json.dumps(data, indent=2)
+                            messages.append({"role": "user", "content": f"[Structured Data]\n{data_text}"})
+                        except (TypeError, ValueError):
+                            logger.exception("Failed to serialize data part")
 
             except Exception:
                 logger.exception("Error processing part")
@@ -226,16 +228,16 @@ class LangGraphA2AExecutor(AgentExecutor):
 
         if mime_type.startswith("image/"):
             return "image"
-        elif mime_type.startswith("video/"):
+        if mime_type.startswith("video/"):
             return "video"
-        elif (
+        if (
             mime_type.startswith("text/")
             or mime_type.startswith("application/")
             or mime_type in ["application/pdf", "application/json", "application/xml"]
         ):
             return "document"
-        else:
-            return "unknown"
+
+        return "unknown"
 
     def _get_file_format_from_mime_type(self, mime_type: str | None, file_type: str) -> str:
         """Extract file format from MIME type using Python's mimetypes library.
