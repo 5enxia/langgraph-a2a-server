@@ -122,21 +122,42 @@ class A2AServer:
 
     @property
     def name(self) -> str:
-        """Get the agent's name."""
+        """Get the agent's name.
+
+        Returns:
+            str: The name of the agent as defined in the AgentCard.
+        """
         return self._agent_card.name
 
     @property
     def description(self) -> str:
-        """Get the agent's description."""
+        """Get the agent's description.
+
+        Returns:
+            str: The description of the agent as defined in the AgentCard.
+        """
         return self._agent_card.description
 
     @property
     def version(self) -> str:
-        """Get the agent's version."""
+        """Get the agent's version.
+
+        Returns:
+            str: The version of the agent, defaulting to '0.0.1' if not specified.
+        """
         return self._agent_card.version or "0.0.1"
 
     def _parse_public_url(self, url: str) -> tuple[str, str]:
-        """Parse the public URL into base URL and mount path components."""
+        """Parse the public URL into base URL and mount path components.
+
+        Args:
+            url: The full public URL of the agent.
+
+        Returns:
+            tuple[str, str]: A tuple containing (base_url, mount_path).
+                base_url: The scheme and netloc (e.g., 'https://example.com').
+                mount_path: The path component (e.g., '/agent').
+        """
         parsed = urlparse(url.rstrip("/"))
         base_url = f"{parsed.scheme}://{parsed.netloc}"
         mount_path = parsed.path if parsed.path != "/" else ""
@@ -154,16 +175,32 @@ class A2AServer:
 
     @property
     def agent_skills(self) -> list[AgentSkill]:
-        """Get the list of skills this agent provides."""
+        """Get the list of skills this agent provides.
+
+        Returns:
+            list[AgentSkill]: A list of AgentSkill objects defining the agent's capabilities.
+        """
         return self._agent_card.skills or []
 
     @agent_skills.setter
     def agent_skills(self, skills: list[AgentSkill]) -> None:
-        """Set the list of skills this agent provides."""
+        """Set the list of skills this agent provides.
+
+        Args:
+            skills: A list of AgentSkill objects to associate with this agent.
+        """
         self._agent_card.skills = skills
 
     def _create_app(self, app_class: type[FastAPI] | type[Starlette], application_class: Any) -> Any:
-        """Helper to create a Starlette or FastAPI application."""
+        """Helper to create a Starlette or FastAPI application.
+
+        Args:
+            app_class: The class to use for the parent application (FastAPI or Starlette).
+            application_class: The A2A application wrapper class (A2AFastAPIApplication or A2AStarletteApplication).
+
+        Returns:
+            Any: The constructed application, possibly mounted within a parent application.
+        """
         a2a_app = application_class(agent_card=self.public_agent_card, http_handler=self.request_handler).build()
 
         if self.mount_path:
@@ -176,11 +213,19 @@ class A2AServer:
         return a2a_app
 
     def to_starlette_app(self) -> Starlette:
-        """Create a Starlette application for serving this agent via HTTP."""
+        """Create a Starlette application for serving this agent via HTTP.
+
+        Returns:
+            Starlette: An initialized Starlette application configured for A2A.
+        """
         return self._create_app(Starlette, A2AStarletteApplication)
 
     def to_fastapi_app(self) -> FastAPI:
-        """Create a FastAPI application for serving this agent via HTTP."""
+        """Create a FastAPI application for serving this agent via HTTP.
+
+        Returns:
+            FastAPI: An initialized FastAPI application configured for A2A.
+        """
         return self._create_app(FastAPI, A2AFastAPIApplication)
 
     def serve(
@@ -191,7 +236,14 @@ class A2AServer:
         port: int | None = None,
         **kwargs: Any,
     ) -> None:
-        """Start the A2A server with the specified application type."""
+        """Start the A2A server using uvicorn.
+
+        Args:
+            app_type: The type of application to serve ('fastapi' or 'starlette'). Defaults to 'starlette'.
+            host: The hostname or IP address to bind to. Overrides the instance setting if provided.
+            port: The port to bind to. Overrides the instance setting if provided.
+            **kwargs: Additional keyword arguments passed to uvicorn.run.
+        """
         try:
             logger.info("Starting LangGraph A2A server...")
             app = self.to_fastapi_app() if app_type == "fastapi" else self.to_starlette_app()
