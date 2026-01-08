@@ -15,7 +15,7 @@ def create_agent_card(
     description: str = "A test agent",
     version: str = "0.0.1",
     skills: list[AgentSkill] | None = None,
-    **kwargs
+    **kwargs,
 ) -> AgentCard:
     """Helper to create AgentCard with required fields."""
     return AgentCard(
@@ -214,25 +214,21 @@ def test_public_agent_card_with_custom_skills(mock_langgraph):
 def test_server_name_validation(mock_langgraph):
     """Test that server validates name."""
     agent_card = create_agent_card(name="", description="A test agent")
-    server = A2AServer(
-        graph=mock_langgraph,
-        agent_card=agent_card,
-    )
-
-    with pytest.raises(ValueError, match="name cannot be None or empty"):
-        _ = server.public_agent_card
+    with pytest.raises(ValueError, match="A2A agent name cannot be None or empty"):
+        A2AServer(
+            graph=mock_langgraph,
+            agent_card=agent_card,
+        )
 
 
 def test_server_description_validation(mock_langgraph):
     """Test that server validates description."""
     agent_card = create_agent_card(name="Test Agent", description="")
-    server = A2AServer(
-        graph=mock_langgraph,
-        agent_card=agent_card,
-    )
-
-    with pytest.raises(ValueError, match="description cannot be None or empty"):
-        _ = server.public_agent_card
+    with pytest.raises(ValueError, match="A2A agent description cannot be None or empty"):
+        A2AServer(
+            graph=mock_langgraph,
+            agent_card=agent_card,
+        )
 
 
 def test_agent_skills_setter(mock_langgraph):
@@ -388,7 +384,7 @@ def test_serve_with_custom_kwargs(mock_run, mock_langgraph):
 def test_serve_handles_keyboard_interrupt(mock_run, mock_langgraph, caplog):
     """Test that serve handles KeyboardInterrupt gracefully."""
     import logging
-    
+
     agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
@@ -406,7 +402,7 @@ def test_serve_handles_keyboard_interrupt(mock_run, mock_langgraph, caplog):
 def test_serve_handles_general_exception(mock_run, mock_langgraph, caplog):
     """Test that serve handles general exceptions gracefully."""
     import logging
-    
+
     agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,

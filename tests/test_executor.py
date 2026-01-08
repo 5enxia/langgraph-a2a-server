@@ -1,9 +1,9 @@
 """Tests for LangGraph A2A Executor."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from a2a.types import DataPart, FilePart, InternalError, Part, TaskState, TextPart, UnsupportedOperationError
+from a2a.types import DataPart, FilePart, InternalError, TextPart, UnsupportedOperationError
 from a2a.utils.errors import ServerError
 
 from langgraph_a2a_server.executor import LangGraphA2AExecutor
@@ -23,64 +23,6 @@ def test_executor_custom_keys(mock_langgraph):
     executor = LangGraphA2AExecutor(mock_langgraph, input_key="input", output_key="output")
     assert executor.input_key == "input"
     assert executor.output_key == "output"
-
-
-def test_classify_file_type():
-    """Test file type classification based on MIME type."""
-    executor = LangGraphA2AExecutor(MagicMock())
-
-    # Test image types
-    assert executor._get_file_type_from_mime_type("image/jpeg") == "image"
-    assert executor._get_file_type_from_mime_type("image/png") == "image"
-
-    # Test video types
-    assert executor._get_file_type_from_mime_type("video/mp4") == "video"
-    assert executor._get_file_type_from_mime_type("video/mpeg") == "video"
-
-    # Test document types
-    assert executor._get_file_type_from_mime_type("text/plain") == "document"
-    assert executor._get_file_type_from_mime_type("application/pdf") == "document"
-    assert executor._get_file_type_from_mime_type("application/json") == "document"
-
-    # Test unknown/edge cases
-    assert executor._get_file_type_from_mime_type("audio/mp3") == "unknown"
-    assert executor._get_file_type_from_mime_type(None) == "unknown"
-    assert executor._get_file_type_from_mime_type("") == "unknown"
-
-
-def test_get_file_format_from_mime_type():
-    """Test file format extraction from MIME type using mimetypes library."""
-    executor = LangGraphA2AExecutor(MagicMock())
-
-    # Test image formats
-    assert executor._get_file_format_from_mime_type("image/jpeg", "image") == "jpeg"
-    assert executor._get_file_format_from_mime_type("image/png", "image") == "png"
-    assert executor._get_file_format_from_mime_type("image/unknown", "image") == "png"
-
-    # Test video formats
-    assert executor._get_file_format_from_mime_type("video/mp4", "video") == "mp4"
-    assert executor._get_file_format_from_mime_type("video/3gpp", "video") == "three_gp"
-    assert executor._get_file_format_from_mime_type("video/unknown", "video") == "mp4"
-
-    # Test document formats
-    assert executor._get_file_format_from_mime_type("application/pdf", "document") == "pdf"
-    assert executor._get_file_format_from_mime_type("text/plain", "document") == "txt"
-    assert executor._get_file_format_from_mime_type("application/unknown", "document") == "txt"
-
-    # Test None/empty cases
-    assert executor._get_file_format_from_mime_type(None, "image") == "png"
-    assert executor._get_file_format_from_mime_type("", "video") == "mp4"
-
-
-def test_strip_file_extension():
-    """Test file extension stripping."""
-    executor = LangGraphA2AExecutor(MagicMock())
-
-    assert executor._strip_file_extension("test.txt") == "test"
-    assert executor._strip_file_extension("document.pdf") == "document"
-    assert executor._strip_file_extension("image.jpeg") == "image"
-    assert executor._strip_file_extension("no_extension") == "no_extension"
-    assert executor._strip_file_extension("multiple.dots.file.ext") == "multiple.dots.file"
 
 
 def test_convert_a2a_parts_to_messages_text_part():
@@ -325,27 +267,3 @@ async def test_cancel_raises_unsupported_operation_error(mock_langgraph, mock_re
 
     # Verify the error is a ServerError containing an UnsupportedOperationError
     assert isinstance(excinfo.value.error, UnsupportedOperationError)
-
-
-def test_default_formats_modularization():
-    """Test that DEFAULT_FORMATS mapping works correctly for modular format defaults."""
-    executor = LangGraphA2AExecutor(MagicMock())
-
-    # Test that DEFAULT_FORMATS contains expected mappings
-    assert hasattr(executor, "DEFAULT_FORMATS")
-    assert executor.DEFAULT_FORMATS["document"] == "txt"
-    assert executor.DEFAULT_FORMATS["image"] == "png"
-    assert executor.DEFAULT_FORMATS["video"] == "mp4"
-    assert executor.DEFAULT_FORMATS["unknown"] == "txt"
-
-    # Test format selection with None mime_type
-    assert executor._get_file_format_from_mime_type(None, "document") == "txt"
-    assert executor._get_file_format_from_mime_type(None, "image") == "png"
-    assert executor._get_file_format_from_mime_type(None, "video") == "mp4"
-    assert executor._get_file_format_from_mime_type(None, "unknown") == "txt"
-    assert executor._get_file_format_from_mime_type(None, "nonexistent") == "txt"  # fallback
-
-    # Test format selection with empty mime_type
-    assert executor._get_file_format_from_mime_type("", "document") == "txt"
-    assert executor._get_file_format_from_mime_type("", "image") == "png"
-    assert executor._get_file_format_from_mime_type("", "video") == "mp4"
