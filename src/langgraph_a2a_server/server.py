@@ -109,7 +109,6 @@ class A2AServer:
             self.mount_path = ""
 
         self.graph = graph
-        self.capabilities = agent_card.capabilities or AgentCapabilities(streaming=True)
 
         self.request_handler = DefaultRequestHandler(
             agent_executor=LangGraphA2AExecutor(graph, input_key=input_key, output_key=output_key),
@@ -147,6 +146,24 @@ class A2AServer:
         """
         return self._agent_card.version or "0.0.1"
 
+    @property
+    def capabilities(self) -> AgentCapabilities:
+        """Get the agent's capabilities.
+
+        Returns:
+            AgentCapabilities: The capabilities of the agent, defaulting to streaming=True if not specified.
+        """
+        return self._agent_card.capabilities or AgentCapabilities(streaming=True)
+
+    @capabilities.setter
+    def capabilities(self, capabilities: AgentCapabilities) -> None:
+        """Set the agent's capabilities.
+
+        Args:
+            capabilities: The AgentCapabilities to associate with this agent.
+        """
+        self._agent_card.capabilities = capabilities
+
     def _parse_public_url(self, url: str) -> tuple[str, str]:
         """Parse the public URL into base URL and mount path components.
 
@@ -170,8 +187,14 @@ class A2AServer:
         Returns:
             AgentCard: The public agent card containing metadata about this agent.
         """
-        # Return a copy of the agent card with updated URL and skills
-        return self._agent_card.model_copy(update={"url": self.http_url, "skills": self.agent_skills})
+        # Return a copy of the agent card with updated URL, skills, and capabilities
+        return self._agent_card.model_copy(
+            update={
+                "url": self.http_url,
+                "skills": self.agent_skills,
+                "capabilities": self.capabilities,
+            }
+        )
 
     @property
     def agent_skills(self) -> list[AgentSkill]:
