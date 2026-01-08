@@ -29,7 +29,23 @@ logger = logging.getLogger(__name__)
 
 
 class A2AServer:
-    """A2A-compatible wrapper for LangGraph agents."""
+    """A2A-compatible wrapper for LangGraph agents.
+
+    This class provides a high-level interface to serve a LangGraph agent as an
+    A2A-compliant service. It handles the creation of web applications (FastAPI or Starlette)
+    and configures the necessary request handlers and executors.
+
+    Example:
+        ```python
+        from langgraph_a2a_server import A2AServer
+        from a2a.types import AgentCard
+
+        # Define your LangGraph 'graph'
+        agent_card = AgentCard(name="My Agent", description="A helpful assistant")
+        server = A2AServer(graph, agent_card=agent_card)
+        server.serve(port=9000)
+        ```
+    """
 
     def __init__(
         self,

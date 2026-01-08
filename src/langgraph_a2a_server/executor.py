@@ -19,8 +19,6 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import (
     DataPart,
     FilePart,
-    FileWithBytes,
-    FileWithUri,
     InternalError,
     Part,
     TextPart,
@@ -37,8 +35,12 @@ logger = logging.getLogger(__name__)
 class LangGraphA2AExecutor(AgentExecutor):
     """Executor that adapts a LangGraph agent to the A2A protocol.
 
-    This executor uses streaming mode to handle the execution of agent requests
-    and converts LangGraph agent responses to A2A protocol events.
+    This executor bridges the gap between LangGraph's state-based execution and the A2A
+    protocol's event-based communication. It handles:
+    1. Converting incoming A2A message parts (text, files, data) into LangChain-compatible messages.
+    2. Executing the LangGraph agent in streaming mode (using `stream_mode="values"`).
+    3. Translating incremental graph state updates into A2A agent response events.
+    4. Managing task state updates and artifact delivery.
     """
 
     # Default formats for each file type when MIME type is unavailable or unrecognized
@@ -98,12 +100,16 @@ class LangGraphA2AExecutor(AgentExecutor):
     async def _execute_streaming(self, context: RequestContext, updater: TaskUpdater) -> None:
         """Execute request in streaming mode.
 
-        Streams the agent's response in real-time, sending incremental updates
-        as they become available from the agent.
+        Streams the agent's response in real-time by monitoring changes in the graph's
+        output state. It uses `stream_mode="values"` to observe the full state at each
+        step and identifies new content by comparing it with previously seen output.
 
         Args:
             context: The A2A request context, containing the user's input and other metadata.
             updater: The task updater for managing task state and sending updates.
+
+        Raises:
+            ValueError: If the input message is missing or empty.
         """
         # Convert A2A message parts to LangGraph input format
         if context.message and context.message.parts:
@@ -166,11 +172,17 @@ class LangGraphA2AExecutor(AgentExecutor):
     def _convert_a2a_parts_to_messages(self, parts: list[Part]) -> list[dict[str, Any]]:
         """Convert A2A message parts to LangGraph messages.
 
+        Maps A2A parts to a format LangGraph agents can understand:
+        - TextPart: Converted to a standard user message.
+        - FilePart: Converted to a text description containing metadata (name, mime-type)
+          and either the URI or a notification of binary data.
+        - DataPart: Serialized to a JSON string and wrapped in a text message.
+
         Args:
-            parts: List of A2A Part objects
+            parts: List of A2A Part objects.
 
         Returns:
-            List of LangGraph message dictionaries
+            List of LangGraph message dictionaries (e.g., {"role": "user", "content": "..."}).
         """
         messages = []
 

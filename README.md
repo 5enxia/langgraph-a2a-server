@@ -1,6 +1,6 @@
 # LangGraph A2A Server
 
-A2A (Agent-to-Agent) Protocol server implementation for LangGraph agents.
+A2A (Agent2Agent) Protocol server implementation for LangGraph agents.
 
 ## Overview
 
@@ -43,19 +43,19 @@ server.serve()
 
 ## Examples
 
-### simple_agent.py (no llm)
+### `simple_agent.py` (no llm)
 
 ```sh
 uv run --extra examples examples/simple_agent.py
 ```
 
-### langchain_agent.py (with llm)
+### `langchain_agent.py` (with llm)
 
 ```sh
 uv run --extra examples examples/langchain_agent.py
 ```
 
-### tools_agent.py (with tools, no llm)
+### `tools_agent.py` (with tools, no llm)
 
 ```sh
 uv run --extra examples examples/tools_agent.py
