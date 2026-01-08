@@ -15,7 +15,7 @@ def create_agent_card(
     description: str = "A test agent",
     version: str = "0.0.1",
     skills: list[AgentSkill] | None = None,
-    **kwargs
+    **kwargs,
 ) -> AgentCard:
     """Helper to create AgentCard with required fields."""
     return AgentCard(
@@ -384,7 +384,7 @@ def test_serve_with_custom_kwargs(mock_run, mock_langgraph):
 def test_serve_handles_keyboard_interrupt(mock_run, mock_langgraph, caplog):
     """Test that serve handles KeyboardInterrupt gracefully."""
     import logging
-    
+
     agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,
@@ -402,7 +402,7 @@ def test_serve_handles_keyboard_interrupt(mock_run, mock_langgraph, caplog):
 def test_serve_handles_general_exception(mock_run, mock_langgraph, caplog):
     """Test that serve handles general exceptions gracefully."""
     import logging
-    
+
     agent_card = create_agent_card()
     server = A2AServer(
         graph=mock_langgraph,

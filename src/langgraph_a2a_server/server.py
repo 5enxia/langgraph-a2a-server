@@ -112,9 +112,7 @@ class A2AServer:
         self.capabilities = agent_card.capabilities or AgentCapabilities(streaming=True)
 
         self.request_handler = DefaultRequestHandler(
-            agent_executor=LangGraphA2AExecutor(
-                graph, input_key=input_key, output_key=output_key
-            ),
+            agent_executor=LangGraphA2AExecutor(graph, input_key=input_key, output_key=output_key),
             task_store=task_store or InMemoryTaskStore(),
             queue_manager=queue_manager,
             push_config_store=push_config_store,
@@ -152,9 +150,7 @@ class A2AServer:
             AgentCard: The public agent card containing metadata about this agent.
         """
         # Return a copy of the agent card with updated URL and skills
-        return self._agent_card.model_copy(
-            update={"url": self.http_url, "skills": self.agent_skills}
-        )
+        return self._agent_card.model_copy(update={"url": self.http_url, "skills": self.agent_skills})
 
     @property
     def agent_skills(self) -> list[AgentSkill]:
@@ -166,13 +162,9 @@ class A2AServer:
         """Set the list of skills this agent provides."""
         self._agent_card.skills = skills
 
-    def _create_app(
-        self, app_class: type[FastAPI] | type[Starlette], application_class: Any
-    ) -> Any:
+    def _create_app(self, app_class: type[FastAPI] | type[Starlette], application_class: Any) -> Any:
         """Helper to create a Starlette or FastAPI application."""
-        a2a_app = application_class(
-            agent_card=self.public_agent_card, http_handler=self.request_handler
-        ).build()
+        a2a_app = application_class(agent_card=self.public_agent_card, http_handler=self.request_handler).build()
 
         if self.mount_path:
             # Create parent app and mount the A2A app at the specified path
@@ -202,16 +194,10 @@ class A2AServer:
         """Start the A2A server with the specified application type."""
         try:
             logger.info("Starting LangGraph A2A server...")
-            app = (
-                self.to_fastapi_app()
-                if app_type == "fastapi"
-                else self.to_starlette_app()
-            )
+            app = self.to_fastapi_app() if app_type == "fastapi" else self.to_starlette_app()
             uvicorn.run(app, host=host or self.host, port=port or self.port, **kwargs)
         except KeyboardInterrupt:
-            logger.warning(
-                "LangGraph A2A server shutdown requested (KeyboardInterrupt)."
-            )
+            logger.warning("LangGraph A2A server shutdown requested (KeyboardInterrupt).")
         except Exception:
             logger.exception("LangGraph A2A server encountered exception.")
         finally:
